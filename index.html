@@ -24,6 +24,7 @@
     --radius-tile: 6px;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; }
   body {
     background: var(--blue);
@@ -197,6 +198,8 @@
   .btn-right:hover:not(:disabled) { background: #278558; }
   .foot { border-top: 1.5px solid var(--line); margin-top: 16px; padding-top: 16px; display: grid; }
 
+  .credit { text-align: center; color: #9fb4e0; font-size: 0.75rem; padding: 0 20px 16px; }
+  .credit a { color: #c9d6f2; }
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (max-width: 860px) {
@@ -263,6 +266,7 @@
     </div>
   </section>
 </main>
+<footer class="credit">Ảnh: Wikimedia Commons, <a href="https://github.com/Kirizakuga/lat-the-doan-hinh/tree/main/images#credits">xem nguồn và giấy phép</a></footer>
 
 <script>
 const ROUNDS = [
