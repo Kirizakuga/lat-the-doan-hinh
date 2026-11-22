@@ -235,6 +235,10 @@
         Tải ảnh lên
       </label>
       <input id="upload" type="file" accept="image/*" class="visually-hidden">
+      <button class="btn" id="use-original" type="button" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        Dùng ảnh gốc
+      </button>
       <button class="btn" id="open-all" type="button">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
         Lật hết thẻ
@@ -414,6 +418,7 @@ function showImage(src) {
 function loadImage() {
   secretImg.hidden = true; secretEmpty.hidden = false;
   const local = store.get("ltdh-img-" + round);
+  $("#use-original").hidden = !local;
   if (local) return showImage(local);
   const want = round;
   const probe = new Image();
@@ -434,12 +439,15 @@ $("#upload").onchange = e => {
       const data = c.toDataURL("image/jpeg", 0.85);
       store.set("ltdh-img-" + round, data);
       showImage(data);
+      $("#use-original").hidden = false;
     };
     img.src = reader.result;
   };
   reader.readAsDataURL(file);
   e.target.value = "";
 };
+
+$("#use-original").onclick = () => { store.del("ltdh-img-" + round); loadImage(); };
 
 loadState();
 setRound(0);
