@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lật thẻ đoán hình</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Coiny&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap&subset=vietnamese" rel="stylesheet">
+<style>
+  :root {
+    --blue: #1d4aa0;
+    --blue-deep: #163a80;
+    --paper: #ffffff;
+    --ink: #1c2638;
+    --muted: #5d6779;
+    --line: #e3e7ee;
+    --tile-hi: #f7aa52;
+    --tile-lo: #df7520;
+    --right: #2f9a68;
+    --wrong: #d24a43;
+    --focus: #ffd34d;
+    --radius-card: 22px;
+    --radius-tile: 6px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--blue);
+    color: var(--ink);
+    font-family: "Be Vietnam Pro", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+  header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 28px 20px 18px;
+  }
+  h1 {
+    font-family: "Coiny", "Be Vietnam Pro", sans-serif;
+    font-weight: 400;
+    color: #fff;
+    font-size: clamp(2rem, 5.2vw, 4rem);
+    line-height: 1.05;
+    letter-spacing: 0.02em;
+    margin: 0;
+    text-align: center;
+    text-shadow: 0 4px 0 var(--blue-deep);
+  }
+  .rounds {
+    display: flex;
+    gap: 6px;
+    background: var(--blue-deep);
+    padding: 5px;
+    border-radius: 999px;
+  }
+  .rounds button {
+    border: 0;
+    background: transparent;
+    color: #c9d6f2;
+    padding: 7px 18px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .rounds button[aria-selected="true"] { background: #fff; color: var(--blue); }
+
+  main {
+    flex: 1;
+    width: min(1180px, 100%);
+    margin: 0 auto;
+    padding: 0 20px 28px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 22px;
+    align-items: stretch;
+  }
+  .card {
+    background: var(--paper);
+    border-radius: var(--radius-card);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* Board */
+  .board-note {
+    display: flex; gap: 8px; align-items: center;
+    font-size: 0.85rem; color: var(--muted); margin: 0 0 12px;
+  }
+  .board-note svg { flex: none; color: var(--tile-lo); }
+  .board {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #eef1f6;
+  }
+  .secret {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  .secret-empty {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    color: var(--muted); font-size: 0.95rem; text-align: center; padding: 20px;
+    background: repeating-linear-gradient(45deg, #eef1f6 0 14px, #e6eaf1 14px 28px);
+  }
+  .tiles {
+    position: absolute; inset: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    perspective: 900px;
+  }
+  .tile {
+    position: relative;
+    border: 0;
+    padding: 0;
+    background: linear-gradient(140deg, var(--tile-hi), var(--tile-lo));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), inset 0 -6px 0 rgba(120,50,0,.12);
+    font-family: "Coiny", sans-serif;
+    font-size: clamp(2rem, 4.4vw, 3.6rem);
+    color: #fff;
+    text-shadow: 0 3px 0 rgba(120,50,0,.35);
+    transition: transform .55s cubic-bezier(.3,.7,.2,1), opacity .4s ease .25s, filter .2s;
+    transform-origin: center;
+  }
+  .tile:hover:not(:disabled) { filter: brightness(1.07); }
+  .tile.active { box-shadow: inset 0 0 0 5px #fff, inset 0 -6px 0 rgba(120,50,0,.12); z-index: 1; }
+  .tile.wrong {
+    background: linear-gradient(140deg, #b8bfcb, #8f98a8);
+    text-shadow: none;
+    cursor: default;
+  }
+  .tile.wrong::after {
+    content: "✕";
+    position: absolute; right: 10px; top: 6px;
+    font-family: "Be Vietnam Pro", sans-serif; font-size: 1rem; font-weight: 700;
+  }
+  .tile.open { transform: rotateY(90deg); opacity: 0; pointer-events: none; }
+  .board-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    border: 1.5px solid var(--line);
+    background: #fff;
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-size: 0.9rem; font-weight: 600;
+  }
+  .btn:hover:not(:disabled) { border-color: #c4cbd8; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn svg { flex: none; }
+
+  /* Question panel */
+  .q-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .q-head h2 { font-size: 1.05rem; margin: 0; font-weight: 700; }
+  .q-count { font-size: 0.85rem; color: var(--muted); }
+  .q-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 26px 0; min-height: 260px; }
+  .q-num {
+    font-family: "Coiny", sans-serif;
+    color: var(--tile-lo);
+    font-size: 1.6rem; line-height: 1; margin: 0 0 10px;
+  }
+  .q-text { font-size: clamp(1.25rem, 2.1vw, 1.75rem); font-weight: 600; line-height: 1.35; margin: 0; max-width: 34ch; }
+  .q-empty h3 { margin: 0 0 6px; font-size: 1.25rem; }
+  .q-empty p { margin: 0; color: var(--muted); }
+
+  .answer { margin-top: 22px; }
+  .answer-box {
+    border-radius: 12px;
+    background: #fff6ec;
+    border: 1.5px dashed #f0b679;
+    padding: 14px 16px;
+  }
+  .answer-box span { display: block; font-size: 0.8rem; color: #a35a18; font-weight: 600; margin-bottom: 2px; }
+  .answer-box strong { font-size: clamp(1.15rem, 1.9vw, 1.5rem); }
+  .reveal { width: 100%; padding: 13px; font-size: 1rem; border-style: dashed; color: #a35a18; border-color: #f0b679; background: #fffaf4; }
+
+  .verdict { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .verdict .btn { padding: 12px; font-size: 1rem; }
+  .btn-wrong:not(:disabled) { color: var(--wrong); }
+  .btn-wrong:hover:not(:disabled) { border-color: var(--wrong); background: #fdf1f0; }
+  .btn-right:not(:disabled) { background: var(--right); border-color: var(--right); color: #fff; }
+  .btn-right:hover:not(:disabled) { background: #278558; }
+  .foot { border-top: 1.5px solid var(--line); margin-top: 16px; padding-top: 16px; display: grid; }
+
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (max-width: 860px) {
+    main { grid-template-columns: 1fr; }
+    .q-body { min-height: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tile { transition: opacity .2s; }
+    .tile.open { transform: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Lật thẻ đoán hình (1)</h1>
+  <div class="rounds" role="tablist" aria-label="Chọn vòng chơi"></div>
+</header>
+
+<main>
+  <section class="card" aria-labelledby="board-label">
+    <p class="board-note" id="board-label">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+      Đoán được hình ảnh bí mật giấu phía sau
+    </p>
+    <div class="board">
+      <img class="secret" alt="Hình bí mật" hidden>
+      <div class="secret-empty">Chưa có ảnh bí mật cho vòng này.<br>Bấm "Tải ảnh lên" để thêm.</div>
+      <div class="tiles"></div>
+    </div>
+    <div class="board-actions">
+      <label class="btn" for="upload">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 15V3m0 0-4 4m4-4 4 4M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+        Tải ảnh lên
+      </label>
+      <input id="upload" type="file" accept="image/*" class="visually-hidden">
+      <button class="btn" id="open-all" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+        Lật hết thẻ
+      </button>
+    </div>
+  </section>
+
+  <section class="card" aria-live="polite">
+    <div class="q-head">
+      <h2>Câu hỏi đố vui</h2>
+      <span class="q-count"></span>
+    </div>
+    <div class="q-body"></div>
+    <div class="verdict">
+      <button class="btn btn-wrong" id="btn-wrong" type="button" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        Sai
+      </button>
+      <button class="btn btn-right" id="btn-right" type="button" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+        Đúng
+      </button>
+    </div>
+    <div class="foot">
+      <button class="btn" id="btn-reset" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        Bắt đầu lại vòng này
+      </button>
+    </div>
+  </section>
+</main>
+
+<script>
+const ROUNDS = [
+  [
+    ["Người đàn ông duy nhất trên thế giới có… sữa nổi tiếng khắp Việt Nam là ai?", "Ông Thọ"],
+    ["Vật gì chỉ có một màu trong suốt nhưng khi gặp ánh sáng lại có thể tạo nên cả cầu vồng bảy sắc?", "Lăng kính"],
+    ["Phân tử ADN được cấu tạo từ 4 loại đơn phân (nuclêôtit) gồm A, T, G và loại nào nữa?", "X (hoặc C, Xitôzin)"],
+    ["Ngày 02/09/1945, Chủ tịch Hồ Chí Minh đã đọc bản Tuyên ngôn Độc lập tại quảng trường nào?", "Quảng trường Ba Đình"],
+    ["Thành ngữ tiếng Anh \"a piece of cake\" mang nghĩa tương đương nào trong tiếng Việt?", "Dễ như ăn bánh"],
+    ["Trong truyện ngắn Vợ nhặt của nhà văn Kim Lân, anh Tràng đã \"nhặt\" được vợ sau khi mời người phụ nữ ấy ăn bao nhiêu bát bánh đúc?", "4 bát bánh đúc"],
+    ["Cầu nào tự có mà không cần ai xây?", "Cầu vồng"],
+    ["Nhà nào không có cửa nhưng lại chứa được cả thế giới?", "Nhà mạng"],
+    ["Thứ gì có cổ nhưng không có đầu?", "Cái áo"]
+  ],
+  [
+    ["Thứ gì mà bạn không thể ăn trong bữa sáng?", "Bữa trưa, bữa chiều, bữa tối, bữa khuya"],
+    ["Bạn sẽ tìm được gì ở giữa \"Hà Nội\"?", "Chữ N"],
+    ["Màu sắc nào xuất hiện nhiều nhất trên quốc kỳ các quốc gia trên thế giới?", "Màu đỏ"],
+    ["Năm 1910, Moocgan đã chọn nó làm đối tượng nghiên cứu di truyền. Nó là gì?", "Ruồi giấm"],
+    ["\"Bốn dây như khóc như than, Khiến người trên tiệc cũng tan nát lòng.\" Thúy Kiều đánh đàn cho ai nghe?", "Thúc Sinh và Hoạn Thư"],
+    ["Đại dương nào lớn nhất trên thế giới?", "Thái Bình Dương"],
+    ["Châu lục nào lớn nhất trên thế giới?", "Châu Á"],
+    ["Hòn đảo nào lớn nhất Việt Nam được mệnh danh là \"Đảo Ngọc\"?", "Phú Quốc"],
+    ["Phố Wall là một địa danh nổi tiếng ở New York về lĩnh vực nào?", "Tài chính"]
+  ],
+  [
+    ["Mỗi người có thể bị mắc bệnh sốt xuất huyết tối đa mấy lần trong đời?", "4 lần"],
+    ["Bộ truyện tranh \"Thần đồng đất Việt\" lấy bối cảnh thời kì lịch sử nào của nước ta?", "Thời Hậu Lê"],
+    ["Chiến thắng Điện Biên Phủ \"lừng lẫy năm châu, chấn động địa cầu\" diễn ra vào năm nào?", "Năm 1954"],
+    ["Ai là người lãnh đạo trận Bạch Đằng năm 938, đánh tan quân Nam Hán?", "Ngô Quyền"],
+    ["Vị vua nào ban \"Chiếu dời đô\" từ Hoa Lư ra Thăng Long năm 1010?", "Lý Thái Tổ (Lý Công Uẩn)"],
+    ["Hai Bà Trưng khởi nghĩa năm 40 để chống ách đô hộ của triều đại nào?", "Nhà Hán (Đông Hán)"],
+    ["Ai là người lãnh đạo cuộc khởi nghĩa Lam Sơn chống quân Minh?", "Lê Lợi"],
+    ["Triều đại phong kiến cuối cùng của Việt Nam là triều đại nào?", "Nhà Nguyễn"],
+    ["Ngày 30/4/1975 gắn với sự kiện lịch sử nào?", "Giải phóng miền Nam, thống nhất đất nước"]
+  ]
+];
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch {} }
+};
+
+const $ = s => document.querySelector(s);
+const tilesEl = $(".tiles"), bodyEl = $(".q-body"), countEl = $(".q-count");
+const secretImg = $(".secret"), secretEmpty = $(".secret-empty");
+const btnWrong = $("#btn-wrong"), btnRight = $("#btn-right");
+
+let round = 0;
+let active = null;
+let revealed = false;
+const state = ROUNDS.map(() => Array(9).fill("closed")); // closed | wrong | open
+
+function loadState() {
+  const saved = store.get("ltdh-state");
+  if (!saved) return;
+  try { JSON.parse(saved).forEach((r, i) => { if (state[i]) state[i] = r; }); } catch {}
+}
+function saveState() { store.set("ltdh-state", JSON.stringify(state)); }
+
+function renderTabs() {
+  const tabs = $(".rounds");
+  tabs.innerHTML = "";
+  ROUNDS.forEach((_, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.role = "tab";
+    b.textContent = "Vòng " + (i + 1);
+    b.setAttribute("aria-selected", i === round);
+    b.onclick = () => setRound(i);
+    tabs.append(b);
+  });
+}
+
+function setRound(i) {
+  round = i; active = null; revealed = false;
+  $("#title").textContent = "Lật thẻ đoán hình (" + (i + 1) + ")";
+  renderTabs(); renderTiles(); renderPanel(); loadImage();
+}
+
+function renderTiles() {
+  tilesEl.innerHTML = "";
+  state[round].forEach((st, i) => {
+    const t = document.createElement("button");
+    t.type = "button";
+    t.className = "tile" + (st !== "closed" ? " " + st : "") + (i === active ? " active" : "");
+    t.textContent = i + 1;
+    t.setAttribute("aria-label", "Ô số " + (i + 1) + (st === "wrong" ? ", đã trả lời sai" : ""));
+    if (st !== "closed") t.disabled = true;
+    t.onclick = () => { active = i; revealed = false; renderTiles(); renderPanel(); };
+    tilesEl.append(t);
+  });
+}
+
+function renderPanel() {
+  const done = state[round].filter(s => s !== "closed").length;
+  countEl.textContent = done + "/9 ô đã chọn";
+  btnWrong.disabled = btnRight.disabled = active === null;
+  if (active === null) {
+    bodyEl.innerHTML = '<div class="q-empty"><h3>Chọn một ô để bắt đầu</h3><p>Bấm vào một ô số để xem câu hỏi. Trả lời đúng thì ô được lật, lộ ra một phần hình bí mật.</p></div>';
+    return;
+  }
+  const [q, a] = ROUNDS[round][active];
+  bodyEl.innerHTML = "";
+  const num = document.createElement("p"); num.className = "q-num"; num.textContent = "Câu " + (active + 1);
+  const text = document.createElement("p"); text.className = "q-text"; text.textContent = q;
+  const ans = document.createElement("div"); ans.className = "answer";
+  if (revealed) {
+    ans.innerHTML = '<div class="answer-box"><span>Đáp án</span><strong></strong></div>';
+    ans.querySelector("strong").textContent = a;
+  } else {
+    const r = document.createElement("button");
+    r.type = "button"; r.className = "btn reveal"; r.textContent = "Xem đáp án";
+    r.onclick = () => { revealed = true; renderPanel(); };
+    ans.append(r);
+  }
+  bodyEl.append(num, text, ans);
+}
+
+function judge(result) {
+  if (active === null) return;
+  state[round][active] = result;
+  active = null; revealed = false;
+  saveState(); renderTiles(); renderPanel();
+}
+btnRight.onclick = () => judge("open");
+btnWrong.onclick = () => judge("wrong");
+
+$("#btn-reset").onclick = () => {
+  state[round] = Array(9).fill("closed");
+  active = null; revealed = false;
+  saveState(); renderTiles(); renderPanel();
+};
+$("#open-all").onclick = () => {
+  state[round] = state[round].map(() => "open");
+  active = null; revealed = false;
+  saveState(); renderTiles(); renderPanel();
+};
+
+// Secret image: a local upload wins, otherwise images/vong-N.jpg from the site.
+function showImage(src) {
+  secretImg.src = src; secretImg.hidden = false; secretEmpty.hidden = true;
+}
+function loadImage() {
+  secretImg.hidden = true; secretEmpty.hidden = false;
+  const local = store.get("ltdh-img-" + round);
+  if (local) return showImage(local);
+  const want = round;
+  const probe = new Image();
+  probe.onload = () => { if (round === want) showImage(probe.src); };
+  probe.src = "images/vong-" + (round + 1) + ".jpg";
+}
+$("#upload").onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1400 / img.width);
+      const c = document.createElement("canvas");
+      c.width = img.width * scale; c.height = img.height * scale;
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      const data = c.toDataURL("image/jpeg", 0.85);
+      store.set("ltdh-img-" + round, data);
+      showImage(data);
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = "";
+};
+
+loadState();
+setRound(0);
+</script>
+</body>
+</html>
